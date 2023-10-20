@@ -19,7 +19,7 @@ jobs:
         dotnet-version: '7.0.x'
 
     - name: Install WASM build tools
-      run: dotnet workload install wasm-tools-net6
+      run: dotnet workload install wasm-tools
 
     - name: Publish app
       run: dotnet publish -c Release
