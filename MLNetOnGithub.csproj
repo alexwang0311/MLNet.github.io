@@ -16,8 +16,4 @@
     <NativeFileReference Include="C++\gpt-2.cpp" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Services\" />
-  </ItemGroup>
-
 </Project>
