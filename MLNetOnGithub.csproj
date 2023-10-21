@@ -13,8 +13,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <NativeFileReference Include="C++\Test.cpp" />
-    <NativeFileReference Include="C++\gpt-2.cpp" />
+    <NativeFileReference Include="C++\main.cpp" />
+    <NativeFileReference Include="C++\ggml.c" />
+    <NativeFileReference Include="C++\ggml-alloc.c" />
+    <NativeFileReference Include="C++\ggml-backend.c" />
+    <NativeFileReference Include="C++\common.cpp" />
+    <NativeFileReference Include="C++\common-ggml.cpp" />
   </ItemGroup>
 
 </Project>
