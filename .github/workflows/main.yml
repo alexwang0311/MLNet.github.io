@@ -24,6 +24,9 @@ jobs:
     - name: Publish app
       run: dotnet publish -c Release
 
+    - name: Download gpt-2 model
+      run: curl -L --output ${{ env.PUBLISH_DIR }}/model/ggml-model.bin https://ggml.ggerganov.com/ggml-model-gpt-2-117M.bin
+
     - name: Rewrite base href
       uses: SteveSandersonMS/ghaction-rewrite-base-href@v1
       with:
