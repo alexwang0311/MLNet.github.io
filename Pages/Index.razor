@@ -13,16 +13,24 @@
 <PageTitle>MLNet.github.io</PageTitle>
 
 <InputFile OnChange="@LoadFiles" />
-<button @onclick="Download">start</button>
-@if (isDownloading)
-{
-    <h2>Waiting</h2>
-}
-<Chat></Chat>
+
+<h3>@text</h3>
+
+<InputText @bind-Value="input"></InputText>
+
+<button @onclick="Generate">generate</button>
 
 @code {
-    [DllImport("main")]
+    [DllImport("main", CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.SysInt)]
     static extern int run(string text);
+
+    [DllImport("main", CallingConvention = CallingConvention.Cdecl)]
+    static extern void gpt2_gen_text(string prompt, StringBuilder sb, int len);
+
+    private String text = "nothing yet";
+
+    private String input { get; set; }
 
     private Byte[] bytes { get; set; }
 
@@ -36,7 +44,6 @@
             try
             {
                 await jsInProcess.InvokeVoidAsync("Module.FS_unlink", "gpt-2.bin");
-                await jsInProcess.InvokeVoidAsync("getBuffer", bytes);
             }
             catch (Exception e)
             {
@@ -45,14 +52,21 @@
         }
     }
 
-    protected async Task Download()
+    protected async Task Generate()
     {
-        isDownloading = true;
-        //bytes = await HttpClient.GetByteArrayAsync("model/ggml-model.bin");
-        var jsInProcess = (IJSInProcessRuntime)JS;
-        await jsInProcess.InvokeVoidAsync("Module.FS_createDataFile", "/", "gpt-2.bin", bytes, true, true);
-        await Task.Run(() => run("Four score and seven years ago")).ConfigureAwait(false);
-        isDownloading = false;
+        text = "started";
+        await Task.Delay(1);
+        try
+        {
+            Int32 len = 1000;
+            StringBuilder sb = new StringBuilder(len);
+            await Task.Run(() => gpt2_gen_text(input, sb, len)).ConfigureAwait(false);
+            text = sb.ToString();
+        }
+        catch(Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
     }
 
     private Byte[] ReadToEnd(Stream stream)
@@ -113,5 +127,7 @@
         await Task.Delay(1);
         await e.File.OpenReadStream(Int64.MaxValue).ReadAsync(buffer);
         bytes = buffer;
+        var jsInProcess = (IJSInProcessRuntime)JS;
+        await jsInProcess.InvokeVoidAsync("Module.FS_createDataFile", "/", "gpt-2.bin", bytes, true, true);
     }
 }

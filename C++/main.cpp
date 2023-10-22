@@ -987,31 +987,23 @@ extern "C" int run(const char * text) {
     return 0;
 }
 
-extern "C" const char * run2(const char * text) {
+extern "C" void gpt2_gen_text(const char * text, char * buffer, int len) {
     ggml_time_init();
-
-    std::string generated_text = "";
 
     const int64_t t_main_start_us = ggml_time_us();
 
     gpt_params params;
     params.model = "gpt-2.bin";
-
-    if (params.seed < 0) {
-        params.seed = time(NULL);
-    }
-
-    printf("%s: seed = %d\n", __func__, params.seed);
+    params.prompt = text;
 
     std::mt19937 rng(params.seed);
-    if (params.prompt.empty()) {
-        params.prompt = text;
-    }
 
     int64_t t_load_us = 0;
 
     gpt_vocab vocab;
     gpt2_model model;
+
+    std::string result = "";
 
     // load the model
     {
@@ -1019,12 +1011,10 @@ extern "C" const char * run2(const char * text) {
 
         if (!gpt2_model_load(params.model, model, vocab, params.n_ctx, params.n_gpu_layers)) {
             fprintf(stderr, "%s: failed to load model from '%s'\n", __func__, params.model.c_str());
-            return generated_text.c_str();
+            //return (char *)result.c_str();
         }
 
         t_load_us = ggml_time_us() - t_start_us;
-
-        test_gpt_tokenizer(vocab, params.token_test);
     }
 
     // keep this buffer alive while evaluating the model
@@ -1083,7 +1073,7 @@ extern "C" const char * run2(const char * text) {
 
             if (!gpt2_eval(model, allocr, params.n_threads, n_past, embd, logits)) {
                 printf("Failed to predict\n");
-                return generated_text.c_str();
+                //return (char *)result.c_str();
             }
 
             t_predict_us += ggml_time_us() - t_start_us;
@@ -1112,6 +1102,9 @@ extern "C" const char * run2(const char * text) {
 
             // add it to the context
             embd.push_back(id);
+            if (embd.size() > 0 ) {
+                result += vocab.id_to_token[embd[0]];
+            }
         } else {
             // if here, it means we are still processing the input prompt
             for (size_t k = i; k < embd_inp.size(); k++) {
@@ -1125,16 +1118,17 @@ extern "C" const char * run2(const char * text) {
 
         // display text
         for (auto id : embd) {
-            // printf("%s", vocab.id_to_token[id].c_str());
-            generated_text += vocab.id_to_token[id].c_str();
+            printf("%s", vocab.id_to_token[id].c_str());
         }
         fflush(stdout);
 
         // end of text token
-        if (!params.ignore_eos && embd.back() == 50256) {
+        if (!params.ignore_eos && embd.back() == 50256 || result.length() >= len) {
             break;
         }
     }
+
+    std::strcpy(buffer, result.c_str());
 
     // report timing
     {
@@ -1153,6 +1147,4 @@ extern "C" const char * run2(const char * text) {
     ggml_backend_buffer_free(model.buffer_kv);
     ggml_backend_buffer_free(buf_compute);
     ggml_backend_free(model.backend);
-
-    return generated_text.c_str();
 }
