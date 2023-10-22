@@ -3,11 +3,8 @@
 @using System.Runtime.InteropServices
 @using MLNetOnGithub.Components.Chat
 @using Microsoft.JSInterop
-@using System.Net.Http.Headers
 @using System.Text
 
-@using System.Net.Http
-@inject HttpClient HttpClient
 @inject IJSRuntime JS
 
 <PageTitle>MLNet.github.io</PageTitle>
@@ -18,39 +15,19 @@
 
 <InputText @bind-Value="input"></InputText>
 
-<button @onclick="Generate">generate</button>
+<button @onclick="Generate" disabled="@(!modelIsLinked)">generate</button>
 
 @code {
     [DllImport("main", CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.SysInt)]
-    static extern int run(string text);
-
-    [DllImport("main", CallingConvention = CallingConvention.Cdecl)]
     static extern void gpt2_gen_text(string prompt, StringBuilder sb, int len);
+
+    private Boolean modelIsLinked = false;
 
     private String text = "nothing yet";
 
     private String input { get; set; }
 
     private Byte[] bytes { get; set; }
-
-    private Boolean isDownloading = false;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            var jsInProcess = (IJSInProcessRuntime)JS;
-            try
-            {
-                await jsInProcess.InvokeVoidAsync("Module.FS_unlink", "gpt-2.bin");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
-        }
-    }
 
     protected async Task Generate()
     {
@@ -60,6 +37,7 @@
         {
             Int32 len = 1000;
             StringBuilder sb = new StringBuilder(len);
+            await Task.Delay(1);
             await Task.Run(() => gpt2_gen_text(input, sb, len)).ConfigureAwait(false);
             text = sb.ToString();
         }
@@ -69,65 +47,31 @@
         }
     }
 
-    private Byte[] ReadToEnd(Stream stream)
-    {
-        long originalPosition = 0;
-
-        if (stream.CanSeek)
-        {
-            originalPosition = stream.Position;
-            stream.Position = 0;
-        }
-
-        try
-        {
-            byte[] readBuffer = new byte[4096];
-
-            int totalBytesRead = 0;
-            int bytesRead;
-
-            while ((bytesRead = stream.Read(readBuffer, totalBytesRead, readBuffer.Length - totalBytesRead)) > 0)
-            {
-                totalBytesRead += bytesRead;
-
-                if (totalBytesRead == readBuffer.Length)
-                {
-                    int nextByte = stream.ReadByte();
-                    if (nextByte != -1)
-                    {
-                        byte[] temp = new byte[readBuffer.Length * 2];
-                        Buffer.BlockCopy(readBuffer, 0, temp, 0, readBuffer.Length);
-                        Buffer.SetByte(temp, totalBytesRead, (byte)nextByte);
-                        readBuffer = temp;
-                        totalBytesRead++;
-                    }
-                }
-            }
-
-            byte[] buffer = readBuffer;
-            if (readBuffer.Length != totalBytesRead)
-            {
-                buffer = new byte[totalBytesRead];
-                Buffer.BlockCopy(readBuffer, 0, buffer, 0, totalBytesRead);
-            }
-            return buffer;
-        }
-        finally
-        {
-            if (stream.CanSeek)
-            {
-                stream.Position = originalPosition;
-            }
-        }
-    }
-
     private async Task LoadFiles(InputFileChangeEventArgs e)
     {
         var buffer = new byte[e.File.Size];
         await Task.Delay(1);
         await e.File.OpenReadStream(Int64.MaxValue).ReadAsync(buffer);
         bytes = buffer;
+
         var jsInProcess = (IJSInProcessRuntime)JS;
-        await jsInProcess.InvokeVoidAsync("Module.FS_createDataFile", "/", "gpt-2.bin", bytes, true, true);
+        try
+        {
+            await jsInProcess.InvokeVoidAsync("Module.FS_unlink", "gpt-2.bin");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        try
+        {
+            await jsInProcess.InvokeVoidAsync("Module.FS_createDataFile", "/", "gpt-2.bin", bytes, true, true);
+            modelIsLinked = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
     }
 }
