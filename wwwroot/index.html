@@ -58,6 +58,26 @@
         <a href="" class="reload">Reload</a>
         <a class="dismiss">🗙</a>
     </div>
+    <script>
+        function addInputFileEventListener() {
+            document.querySelector('.inputTarget').addEventListener('change', function () {
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var arrayBuffer = this.result;
+                    console.log(arrayBuffer);
+                    document.querySelector('#result').innerHTML = arrayBuffer + '  ' + arrayBuffer.byteLength;
+                    try {
+                        Module.FS_unlink("gpt-2.bin");
+                    } catch (e) {
+                        // ignore
+                    }
+                    Module.FS_createDataFile("/", "gpt-2.bin", new Uint8Array(arrayBuffer), true, true);
+                    console.log("model file has been linked to WASM!")
+                }
+                reader.readAsArrayBuffer(this.files[0]);
+            }, false);
+        }
+    </script>
     <script src="decode.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>

@@ -54,12 +54,12 @@
                     }
                 }
             </MudPaper>
-            <MudTextField @bind-Value="input" Disabled="@(!modelIsLinked || gptIsThinking)" Class="align-self-end" FullWidth="true" T="string" Label="Enter your prompt" Variant="Variant.Outlined" Lines="3" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="@(() => EnterPrompt())" />
+            <MudTextField @bind-Value="input" Disabled="@gptIsThinking" Class="align-self-end" FullWidth="true" T="string" Label="Enter your prompt" Variant="Variant.Outlined" Lines="3" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="@(() => EnterPrompt())" />
         </MudPaper>
     </MudItem>
 </MudGrid>
-
-<InputFile OnChange="@LoadFiles" />
+<input class="inputTarget" type="file" />
+<div id="result"></div>
 
 @code {
     private struct Message
@@ -71,19 +71,16 @@
     [DllImport("main", CallingConvention = CallingConvention.Cdecl)]
     static extern void gpt2_gen_text(string prompt, StringBuilder sb, int len);
 
-    private Boolean modelIsLinked = false;
-
     private Boolean gptIsThinking = false;
 
     private String input { get; set; }
-
-    private Byte[] bytes { get; set; }
 
     private List<Message> messages = new();
 
     private TypewriterBuilder gptIsThinkingMessage = new TypewriterBuilder(defaultCharacterPause: 6)
         .TypeString("GPT is thinking...", 30);
 
+    /*
     private async Task PeriodicAsync(Func<Task> action, TimeSpan interval,
     CancellationToken cancellationToken = default)
     {
@@ -92,6 +89,16 @@
         {
             await action();
             await timer.WaitForNextTickAsync(cancellationToken);
+        }
+    }
+    */
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var jsInProcess = (IJSInProcessRuntime)JS;
+            await jsInProcess.InvokeVoidAsync("addInputFileEventListener");
         }
     }
 
@@ -126,33 +133,5 @@
 
         messages.Add(gptResponse);
         gptIsThinking = false;
-    }
-
-    private async Task LoadFiles(InputFileChangeEventArgs e)
-    {
-        var buffer = new byte[e.File.Size];
-        await Task.Delay(1);
-        await e.File.OpenReadStream(Int64.MaxValue).ReadAsync(buffer);
-        bytes = buffer;
-
-        var jsInProcess = (IJSInProcessRuntime)JS;
-        try
-        {
-            await jsInProcess.InvokeVoidAsync("Module.FS_unlink", "gpt-2.bin");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
-
-        try
-        {
-            await jsInProcess.InvokeVoidAsync("Module.FS_createDataFile", "/", "gpt-2.bin", bytes, true, true);
-            modelIsLinked = true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
     }
 }
