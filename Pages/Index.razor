@@ -9,15 +9,49 @@
 
 <PageTitle>MLNet.github.io</PageTitle>
 
+<MudGrid Class="mt-2" Justify="Justify.Center">
+    <MudItem>
+        <MudPaper Class="d-flex pa-4 flex-column flex-grow-1 gap-4" Height="80vh" Width="40vw">
+            <MudPaper Class="d-flex flex-column flex-grow-1 gap-4 overflow-y-scroll" Height="85%" Width="100%" Elevation="0" Outlined="false">
+                @foreach (Message message in messages)
+                {
+                    if(message.from == "user")
+                    {
+                        <MudPaper Class="pa-4">
+                            <MudText Typo="Typo.body1">@message.text</MudText>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        if(message.text is null)
+                        {
+                            <MudPaper Class="pa-4">
+                                <MudText Typo="Typo.body1">gpt-2 is thinking...</MudText>
+                            </MudPaper>
+                        }
+                        else
+                        {
+                            <MudPaper Class="pa-4">
+                                <MudText Typo="Typo.body1">@message.text</MudText>
+                            </MudPaper>
+                        }
+                    }
+                }
+            </MudPaper>
+            <MudTextField @bind-Value="input" Class="align-self-end" FullWidth="true" T="string" Label="Enter your prompt" Variant="Variant.Outlined" Lines="3" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="@(() => EnterPrompt())" />
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
 <InputFile OnChange="@LoadFiles" />
 
-<h3>@text</h3>
-
-<InputText @bind-Value="input"></InputText>
-
-<button @onclick="Generate" disabled="@(!modelIsLinked)">generate</button>
-
 @code {
+    private struct Message
+    {
+        public String from;
+        public String? text;
+    }
+
     [DllImport("main", CallingConvention = CallingConvention.Cdecl)]
     static extern void gpt2_gen_text(string prompt, StringBuilder sb, int len);
 
@@ -28,6 +62,39 @@
     private String input { get; set; }
 
     private Byte[] bytes { get; set; }
+
+    private List<Message> messages = new();
+
+    private async Task EnterPrompt()
+    {
+        Message prompt = new();
+        prompt.from = "user";
+        prompt.text = input;
+        messages.Add(prompt);
+        input = "";
+        StateHasChanged();
+        await Task.Delay(1000);
+
+        Message gptWaitingMessage = new();
+        gptWaitingMessage.from = "gpt";
+        gptWaitingMessage.text = null;
+        messages.Add(gptWaitingMessage);
+        StateHasChanged();
+
+        Int32 len = 1000;
+        StringBuilder sb = new StringBuilder(len);
+        await Task.Delay(1);
+        await Task.Run(() => gpt2_gen_text(prompt.text, sb, len)).ConfigureAwait(false);
+        Message gptResponse = new();
+        gptResponse.from = "gpt";
+        gptResponse.text = sb.ToString();
+
+        messages.RemoveAt(messages.Count - 1);
+        StateHasChanged();
+
+        messages.Add(gptResponse);
+        StateHasChanged();
+    }
 
     protected async Task Generate()
     {
