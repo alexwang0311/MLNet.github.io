@@ -13,6 +13,47 @@
     <MudItem xs="12" lg="6">
         <MudPaper Class="d-flex pa-4 flex-column flex-grow-1 gap-4" Height="80vh">
             <MudPaper Class="d-flex flex-column flex-grow-1 gap-4 overflow-y-scroll" Height="85%" Width="100%" Elevation="0" Outlined="false">
+                @for (Int32 i = 0; i < startupMessages.Count; i++)
+                {
+                    Message message = startupMessages[i];
+                    if (messages.Count == 0 && i == startupMessages.Count - 1)
+                    {
+                        <MudPaper Class="pa-4">
+                            <MudText Typo="Typo.body1">
+                                <Typewriter Builder="@(new TypewriterBuilder(defaultCharacterPause: 6).TypeString(message.text))" />
+                                @if (message.from == "upload")
+                                {
+                                    <MudText Typo="Typo.body1">
+                                        <input class="inputTarget" type="file" />
+                                        <div id="result"></div>
+                                    </MudText>
+                                }
+                            </MudText>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        if(message.from == "link")
+                        {
+                            <MudPaper Class="pa-4">
+                                <MudText Typo="Typo.body1">
+                                    To start, please make sure you are using a modern browser and have a ggml-compatible gpt-2 model on your local computer. You can download one from 
+                                    <MudLink Href="https://huggingface.co/ggerganov/ggml/tree/main" Target="_blank">https://huggingface.co/ggerganov/ggml/tree/main</MudLink>
+                                    .
+                                </MudText>
+                            </MudPaper>
+                        }
+                        else
+                        {
+                            <MudPaper Class="pa-4">
+                                <MudText Typo="Typo.body1">
+                                    @message.text
+                                </MudText>
+                            </MudPaper>
+                        }
+                    }
+                }
+
                 @for(Int32 i = 0; i < messages.Count; i++)
                 {
                     Message message = messages[i];
@@ -58,8 +99,7 @@
         </MudPaper>
     </MudItem>
 </MudGrid>
-<input class="inputTarget" type="file" />
-<div id="result"></div>
+
 
 @code {
     private struct Message
@@ -73,9 +113,13 @@
 
     private Boolean gptIsThinking = false;
 
+    private Boolean fileIsLinked = false;
+
     private String input { get; set; }
 
     private List<Message> messages = new();
+
+    private List<Message> startupMessages = new();
 
     private TypewriterBuilder gptIsThinkingMessage = new TypewriterBuilder(defaultCharacterPause: 6)
         .TypeString("GPT is thinking...", 30);
@@ -83,13 +127,13 @@
     /*
     private async Task PeriodicAsync(Func<Task> action, TimeSpan interval,
     CancellationToken cancellationToken = default)
-    {
-        using PeriodicTimer timer = new(interval);
-        while (true)
         {
+        using PeriodicTimer timer = new(interval);
+            while (true)
+            {
             await action();
             await timer.WaitForNextTickAsync(cancellationToken);
-        }
+    }
     }
     */
 
@@ -97,6 +141,37 @@
     {
         if (firstRender)
         {
+            Message greeting = new();
+            greeting.from = "gpt";
+            greeting.text = "This is a Blazor WASM app that runs a gpt-2 model entirely within your browser.";
+
+            startupMessages.Add(greeting);
+            StateHasChanged();
+            await Task.Delay(1000);
+
+            Message downloadModel2 = new();
+            downloadModel2.from = "gpt";
+            downloadModel2.text = "Please note that these GPT models aren't meant to be run in a browser environment, this is purely an exprimental demonstration of the potentials of Blazor WASM. The performance and quality of the results may not be optimal.";
+
+            startupMessages.Add(downloadModel2);
+            StateHasChanged();
+            await Task.Delay(3000);
+
+            Message downloadModel = new();
+            downloadModel.from = "link";
+            downloadModel.text = "To start, please make sure you are using a modern browser and have a ggml-compatible gpt-2 model on your local computer. You can download one from https://huggingface.co/ggerganov/ggml/tree/main.";
+
+            startupMessages.Add(downloadModel);
+            StateHasChanged();
+            await Task.Delay(3000);
+
+            Message upload = new();
+            upload.from = "upload";
+            upload.text = "Please upload your gpt-2 model: ";
+            startupMessages.Add(upload);
+            StateHasChanged();
+            await Task.Delay(3000);
+
             var jsInProcess = (IJSInProcessRuntime)JS;
             await jsInProcess.InvokeVoidAsync("addInputFileEventListener");
         }
@@ -126,7 +201,16 @@
         await Task.Run(() => gpt2_gen_text(prompt.text, sb, len));
         Message gptResponse = new();
         gptResponse.from = "gpt";
-        gptResponse.text = sb.ToString();
+        String response = sb.ToString();
+        if(!(response.EndsWith('.') || response.EndsWith('!') || response.EndsWith('?')))
+        {
+            response = String.Join(".", response.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries)
+                                                    .Reverse()
+                                                    .Skip(1)
+                                                    .Reverse()
+                                                    .ToArray()) + ".";
+        }
+        gptResponse.text = response;
 
         messages.RemoveAt(messages.Count - 1);
         StateHasChanged();

@@ -53,11 +53,12 @@
         <div class="loading-progress-text"></div>
     </div>
 
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
+    <!-- NOTE: Temporarily disabled. There is a bug where upon a successful return from p/invoking main.cpp, an unknown exception is thrown somewhere. But it didn't seem to have an effect to the app. -->
+    <!--<div id="blazor-error-ui">
+        <!--An unhandled error has occurred.
         <a href="" class="reload">Reload</a>
         <a class="dismiss">🗙</a>
-    </div>
+    </div>-->
     <script>
         function addInputFileEventListener() {
             document.querySelector('.inputTarget').addEventListener('change', function () {
@@ -65,14 +66,14 @@
                 reader.onload = function () {
                     var arrayBuffer = this.result;
                     console.log(arrayBuffer);
-                    document.querySelector('#result').innerHTML = arrayBuffer + '  ' + arrayBuffer.byteLength;
+                    document.querySelector('#result').innerHTML = 'Read: ' + arrayBuffer + '  ' + arrayBuffer.byteLength;
                     try {
                         Module.FS_unlink("gpt-2.bin");
                     } catch (e) {
                         // ignore
                     }
                     Module.FS_createDataFile("/", "gpt-2.bin", new Uint8Array(arrayBuffer), true, true);
-                    console.log("model file has been linked to WASM!")
+                    console.log("model file has been linked to WASM!");
                 }
                 reader.readAsArrayBuffer(this.files[0]);
             }, false);
