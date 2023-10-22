@@ -1,9 +1,9 @@
 ﻿@page "/"
 
 @using System.Runtime.InteropServices
-@using MLNetOnGithub.Components.Chat
 @using Microsoft.JSInterop
 @using System.Text
+@using BlazorTypewriter
 
 @inject IJSRuntime JS
 
@@ -13,8 +13,9 @@
     <MudItem>
         <MudPaper Class="d-flex pa-4 flex-column flex-grow-1 gap-4" Height="80vh" Width="40vw">
             <MudPaper Class="d-flex flex-column flex-grow-1 gap-4 overflow-y-scroll" Height="85%" Width="100%" Elevation="0" Outlined="false">
-                @foreach (Message message in messages)
+                @for(Int32 i = 0; i < messages.Count; i++)
                 {
+                    Message message = messages[i];
                     if(message.from == "user")
                     {
                         <MudPaper Class="pa-4">
@@ -26,19 +27,34 @@
                         if(message.text is null)
                         {
                             <MudPaper Class="pa-4">
-                                <MudText Typo="Typo.body1">gpt-2 is thinking...</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <Typewriter Builder="@gptIsThinkingMessage" />
+                                </MudText>
                             </MudPaper>
                         }
                         else
                         {
-                            <MudPaper Class="pa-4">
-                                <MudText Typo="Typo.body1">@message.text</MudText>
-                            </MudPaper>
+                            if(i == messages.Count - 1)
+                            {
+                                <MudPaper Class="pa-4">
+                                    <MudText Typo="Typo.body1">
+                                        <Typewriter Builder="@(new TypewriterBuilder(defaultCharacterPause: 6).TypeString(message.text))" />
+                                    </MudText>
+                                </MudPaper>
+                            }
+                            else
+                            {
+                                <MudPaper Class="pa-4">
+                                    <MudText Typo="Typo.body1">
+                                        @message.text
+                                    </MudText>
+                                </MudPaper>
+                            }
                         }
                     }
                 }
             </MudPaper>
-            <MudTextField @bind-Value="input" Class="align-self-end" FullWidth="true" T="string" Label="Enter your prompt" Variant="Variant.Outlined" Lines="3" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="@(() => EnterPrompt())" />
+            <MudTextField @bind-Value="input" Disabled="@(!modelIsLinked || gptIsThinking)" Class="align-self-end" FullWidth="true" T="string" Label="Enter your prompt" Variant="Variant.Outlined" Lines="3" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="@(() => EnterPrompt())" />
         </MudPaper>
     </MudItem>
 </MudGrid>
@@ -57,7 +73,7 @@
 
     private Boolean modelIsLinked = false;
 
-    private String text = "nothing yet";
+    private Boolean gptIsThinking = false;
 
     private String input { get; set; }
 
@@ -65,8 +81,24 @@
 
     private List<Message> messages = new();
 
+    private TypewriterBuilder gptIsThinkingMessage = new TypewriterBuilder(defaultCharacterPause: 6)
+        .TypeString("GPT is thinking...", 30);
+
+    private async Task PeriodicAsync(Func<Task> action, TimeSpan interval,
+    CancellationToken cancellationToken = default)
+    {
+        using PeriodicTimer timer = new(interval);
+        while (true)
+        {
+            await action();
+            await timer.WaitForNextTickAsync(cancellationToken);
+        }
+    }
+
     private async Task EnterPrompt()
     {
+        gptIsThinking = true;
+
         Message prompt = new();
         prompt.from = "user";
         prompt.text = input;
@@ -80,11 +112,11 @@
         gptWaitingMessage.text = null;
         messages.Add(gptWaitingMessage);
         StateHasChanged();
+        await Task.Delay(1000);
 
         Int32 len = 1000;
         StringBuilder sb = new StringBuilder(len);
-        await Task.Delay(1);
-        await Task.Run(() => gpt2_gen_text(prompt.text, sb, len)).ConfigureAwait(false);
+        await Task.Run(() => gpt2_gen_text(prompt.text, sb, len));
         Message gptResponse = new();
         gptResponse.from = "gpt";
         gptResponse.text = sb.ToString();
@@ -93,25 +125,7 @@
         StateHasChanged();
 
         messages.Add(gptResponse);
-        StateHasChanged();
-    }
-
-    protected async Task Generate()
-    {
-        text = "started";
-        await Task.Delay(1);
-        try
-        {
-            Int32 len = 1000;
-            StringBuilder sb = new StringBuilder(len);
-            await Task.Delay(1);
-            await Task.Run(() => gpt2_gen_text(input, sb, len)).ConfigureAwait(false);
-            text = sb.ToString();
-        }
-        catch(Exception e)
-        {
-            Console.WriteLine(e.Message);
-        }
+        gptIsThinking = false;
     }
 
     private async Task LoadFiles(InputFileChangeEventArgs e)
