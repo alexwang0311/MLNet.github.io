@@ -187,6 +187,11 @@
 
     private async Task EnterPrompt()
     {
+        if (String.IsNullOrEmpty(input))
+        {
+            return;
+        }
+
         gptIsThinking = true;
         var jsInProcess = (IJSInProcessRuntime)JS;
 
