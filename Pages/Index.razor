@@ -12,7 +12,7 @@
 <MudGrid Class="mt-2" Justify="Justify.Center">
     <MudItem xs="12" lg="6">
         <MudPaper Class="d-flex pa-4 flex-column flex-grow-1 gap-4" Height="80vh">
-            <MudPaper Class="d-flex flex-column flex-grow-1 gap-4 overflow-y-scroll" Height="85%" Width="100%" Elevation="0" Outlined="false">
+            <MudPaper id="scroll-area" Class="d-flex flex-column flex-grow-1 gap-4 overflow-y-scroll" Height="85%" Width="100%" Elevation="0" Outlined="false">
                 @for (Int32 i = 0; i < startupMessages.Count; i++)
                 {
                     Message message = startupMessages[i];
@@ -40,6 +40,14 @@
                                     To start, please make sure you are using a modern browser and have a ggml-compatible gpt-2 model on your local computer. You can download one from 
                                     <MudLink Href="https://huggingface.co/ggerganov/ggml/tree/main" Target="_blank">https://huggingface.co/ggerganov/ggml/tree/main</MudLink>
                                     .
+                                </MudText>
+                            </MudPaper>
+                        }
+                        else if(message.from == "upload")
+                        {
+                            <MudPaper Class="pa-4">
+                                <MudText Typo="Typo.body1">
+                                    Model has been loaded. If you want to use a different model, please refresh the site.
                                 </MudText>
                             </MudPaper>
                         }
@@ -151,7 +159,7 @@
 
             Message downloadModel2 = new();
             downloadModel2.from = "gpt";
-            downloadModel2.text = "Please note that these GPT models aren't meant to be run in a browser environment, this is purely an exprimental demonstration of the potentials of Blazor WASM. The performance and quality of the results may not be optimal.";
+            downloadModel2.text = "Please note that these neural network models aren't meant to be run in a browser environment, this is purely an exprimental demonstration of the potentials of Blazor WASM. The performance and quality of the results may not be optimal.";
 
             startupMessages.Add(downloadModel2);
             StateHasChanged();
@@ -213,9 +221,9 @@
         gptResponse.text = response;
 
         messages.RemoveAt(messages.Count - 1);
-        StateHasChanged();
-
         messages.Add(gptResponse);
         gptIsThinking = false;
+        var jsInProcess = (IJSInProcessRuntime)JS;
+        await jsInProcess.InvokeVoidAsync("scrollToBottom").ConfigureAwait(false);
     }
 }
