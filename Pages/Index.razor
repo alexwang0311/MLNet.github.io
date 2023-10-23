@@ -188,6 +188,7 @@
     private async Task EnterPrompt()
     {
         gptIsThinking = true;
+        var jsInProcess = (IJSInProcessRuntime)JS;
 
         Message prompt = new();
         prompt.from = "user";
@@ -202,6 +203,7 @@
         gptWaitingMessage.text = null;
         messages.Add(gptWaitingMessage);
         StateHasChanged();
+        await jsInProcess.InvokeVoidAsync("onPromptScrollToBottom").ConfigureAwait(false);
         await Task.Delay(1000);
 
         Int32 len = 1000;
@@ -223,7 +225,6 @@
         messages.RemoveAt(messages.Count - 1);
         messages.Add(gptResponse);
         gptIsThinking = false;
-        var jsInProcess = (IJSInProcessRuntime)JS;
-        await jsInProcess.InvokeVoidAsync("scrollToBottom").ConfigureAwait(false);
+        await jsInProcess.InvokeVoidAsync("onResponseScrollToBottom").ConfigureAwait(false);
     }
 }

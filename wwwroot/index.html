@@ -79,13 +79,18 @@
             }, false);
         }
 
-        function scrollToBottom() {
+        function onPromptScrollToBottom() {
             var element = document.getElementById("scroll-area");
+            setTimeout(() => { element.scrollTop = element.scrollHeight; }, 10);
+        }
+
+        function onResponseScrollToBottom() {
+            var element = document.getElementById("scroll-area");
+            setTimeout(() => { element.scrollTop = element.scrollHeight; }, 2000);
             setTimeout(() => { element.scrollTop = element.scrollHeight; }, 3000);
             setTimeout(() => { element.scrollTop = element.scrollHeight; }, 4000);
             setTimeout(() => { element.scrollTop = element.scrollHeight; }, 5000);
             setTimeout(() => { element.scrollTop = element.scrollHeight; }, 6000);
-            setTimeout(() => { element.scrollTop = element.scrollHeight; }, 7000);
         }
     </script>
     <script src="decode.js"></script>
